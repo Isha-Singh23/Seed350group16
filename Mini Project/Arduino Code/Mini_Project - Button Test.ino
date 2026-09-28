@@ -3,6 +3,8 @@
   Mini Project
     Image will be shown to a camera. Camera returns what quadrant the image is in.
     Then the Arduino will spin it's motors accordingly to display either the "top" or "bottom" of the wheel.
+    Note: This codes contains the code used to test our motors using a button setup instead of getting data from
+    the raspberry pi
 */
 
 // Motor control pins. Configured for direction, speed
@@ -47,9 +49,9 @@ float BatteryVoltage = 7.8;   // measured/expected battery voltage
 float M1Kp = 3.5;               // Proportional gain from Simulink
 float M1Ki = 0.5;               // Integral gain from Simulink
 float M2Kp = 3.5;
-float M1Ki = 0.5;
+float M2Ki = 0.5;
 float SatLimit = 6.0;         // voltage saturation limit, +/- volts
-float dt = 0.1;
+float dt = 0.01;
 
 // Pins that talk to the Pi to track what quadrant the image is in
 int NSPin = 12;
@@ -58,6 +60,7 @@ int EWPin = 13;
 int NS = 0;
 int EW = 0;
 
+
 void setup() {
   // Set up our motor to be outputs (only necessary for commented out code that controls actually moving the motors), not necessary if only looking at the motor encoders
   pinMode(MotorEnable, OUTPUT);
@@ -65,6 +68,7 @@ void setup() {
   pinMode(Motor1[1], OUTPUT);
   pinMode(Motor2[0], OUTPUT);
   pinMode(Motor2[1], OUTPUT);
+
   
   // Set up the Motor encoder pins as inputs
   pinMode(M1EncA, INPUT);
@@ -79,37 +83,39 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(M2EncA), M2EncISR, CHANGE);
 
   // Pin set up to talk to the Raspberry Pi
-  pinMode(NSPin, INPUT);
-  pinMode(EWPin, INPUT);
+  pinMode(NSPin, INPUT_PULLUP);
+  pinMode(EWPin, INPUT_PULLUP);
+
 }
 
 void loop() {
-  // Getting Data from Raspberry Pi
+  // test code
+  // digitalWrite(8, HIGH);
   NS = digitalRead(NSPin);
   EW = digitalRead(EWPin);
 
   // In north half if NS = 0, In south half if NS = 1
-  if (NS = 0) {
+  if (NS == 0) {
     // move left motor to pos 0 (0 degrees = 0 encoder counts)
     M2DesiredPos = 0;
-  } else if (NS = 1) {
+  } else if (NS == 1) {
     // move left motor to pos 1 (180 degress = 1600 encoder counts)
     M2DesiredPos = 1600;
   }
 
   // IN east half if EW = 0, In west half if EW = 1
-  if (EW = 0) {
+  if (EW == 0) {
     // move right motor to pos 0 (0 degrees = 0 encoder counts)
     M1DesiredPos = 0;
-  } else if (EW = 1) {
+  } else if (EW == 1) {
     // move right motor to pos 1 (180 degrees = 1600 encoder counts)
-    M1DesiredPos = 1600:
+    M1DesiredPos = 1600;
   }
 
-  M1Rad = 2*PI*(float)M1Pos/3200;
-  M2Rad = 2*PI*(float)M2Pos/3200;
-  M1DesiredRad = 2*PI*(float)M1DesiredPos/3200;
-  M2DesiredPos = 2*PI*(float)M2DesiredPos/3200;
+  M1Rad = 2.0*PI*(float)M1Pos/3200;
+  M2Rad = 2.0*PI*(float)M2Pos/3200;
+  M1DesiredRad = 2.0*PI*(float)M1DesiredPos/3200;
+  M2DesiredRad = 2.0*PI*(float)M2DesiredPos/3200;
 
   M1Error = M1DesiredRad - M1Rad;
   M2Error = M2DesiredRad - M2Rad;
@@ -118,15 +124,15 @@ void loop() {
   M2IntegralError += M2Error * dt;
 
   M1Voltage = (M1Kp * M1Error) + (M1Ki * M1IntegralError);
-  M1Voltage = (M2Kp * M1Error) + (M2Ki * M1IntegralError);
+  M2Voltage = (M2Kp * M2Error) + (M2Ki * M2IntegralError);
 
   // --- Voltage Saturation and Anti-Windup ---
     if (M1Voltage > SatLimit) {
       M1Voltage = SatLimit;
       // Clamp integral term to prevent windup when output saturates
       M1IntegralError -= M1Error * dt; 
-    } else if (M1Voltage < -SatLimit) {
-      M1Voltage = -SatLimit;
+    } else if (M1Voltage < (-1 * SatLimit)) {
+      M1Voltage = (-1 * SatLimit);
       // Clamp integral term
       M1IntegralError -= M1Error * dt; 
     }
@@ -136,8 +142,8 @@ void loop() {
       M2Voltage = SatLimit;
       // Clamp integral term to prevent windup when output saturates
       M2IntegralError -= M2Error * dt; 
-    } else if (M2Voltage < -SatLimit) {
-      M2Voltage = -SatLimit;
+    } else if (M2Voltage < (-1 * SatLimit)) {
+      M2Voltage = (-1 * SatLimit);
       // Clamp integral term
       M2IntegralError -= M2Error * dt; 
     }
@@ -149,7 +155,7 @@ void loop() {
       digitalWrite(Motor1[0], LOW);
     }
     int M1PWM = (int)(255.0 * abs(M1Voltage) / BatteryVoltage);
-    analogWrite(Motor1[1], min(M1PWM, 255));
+    analogWrite(Motor1[1], M1PWM);
 
     // --- Drive Motor 2 ---
     if (M2Voltage > 0) {
@@ -158,7 +164,7 @@ void loop() {
       digitalWrite(Motor2[0], HIGH);
     }
     int M2PWM = (int)(255.0 * abs(M2Voltage) / BatteryVoltage);
-    analogWrite(Motor2[1], min(M2PWM, 255));
+    analogWrite(Motor2[1], M2PWM);
 }
 
 // ISR for Motor 1, triggers anytime A changes
