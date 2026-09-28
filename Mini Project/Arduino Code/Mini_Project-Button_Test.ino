@@ -90,7 +90,6 @@ void setup() {
 
 void loop() {
   // test code
-  // digitalWrite(8, HIGH);
   NS = digitalRead(NSPin);
   EW = digitalRead(EWPin);
 
