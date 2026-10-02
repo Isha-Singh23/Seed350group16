@@ -4,7 +4,9 @@
     Image will be shown to a camera. Camera returns what quadrant the image is in.
     Then the Arduino will spin it's motors accordingly to display either the "top" or "bottom" of the wheel.
     Note: This codes contains the code used to test our motors using a button setup instead of getting data from
-    the raspberry pi
+    the raspberry pi. These buttons function by simultating the two bit vector input with a button determining if we are
+    in the top or bottom (north south button) or the left or right (East West button), together this information becomes a 
+    two bit vector that determines what quadrant we are in. 
 */
 
 // Motor control pins. Configured for direction, speed
